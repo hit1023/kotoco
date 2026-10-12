@@ -1,0 +1,18 @@
+services:
+  api:
+    build: ./api
+    container_name: kotoco-api
+    ports:
+      - "8896:8000"   # API / Swagger UI: http://localhost:8896/docs
+    volumes:
+      - ./cache:/cache
+    restart: unless-stopped
+
+  webui:
+    build: ./webui
+    container_name: kotoco-webui
+    ports:
+      - "8895:80"     # WebUI: http://localhost:8895
+    depends_on:
+      - api
+    restart: unless-stopped
