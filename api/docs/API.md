@@ -38,6 +38,8 @@
 | voice | string | `jf_alpha` | `/voices` にあるボイス名 |
 | speed | number | `1.0` | 0.5〜2.0 |
 | format | string | `wav` | `wav` または `mp3` |
+| use_replacements | boolean | `true` | 置換ルールを適用する |
+| record_history | boolean | `true` | 履歴に記録する |
 
 ```bash
 curl -X POST http://localhost:8896/tts \
@@ -67,6 +69,40 @@ open("out.wav", "wb").write(r.content)
 | 400 | text が空、未対応の lang、未対応の format |
 | 422 | パラメータの型/範囲エラー (speed 範囲外など) |
 | 500 | 音声が生成されなかった |
+
+レスポンスヘッダー: `X-Generation-Ms`(生成時間ms)、`X-Applied-Text`(置換後テキスト, URLエンコード)
+
+## 置換ルール
+
+合成前にテキストへ適用される置換辞書。大文字小文字は区別せず、長い語が優先、置換結果は再置換されません。SQLite(`./data/kotoco.db`)に保存されます。
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET | `/replacements` | 一覧 `[{"src","dst"}]` |
+| POST | `/replacements` | 追加/更新 `{"src":"kotoko","dst":"ことこ"}` (src が同じなら上書き) |
+| DELETE | `/replacements?src=kotoko` | 削除 (なければ 404) |
+| GET | `/replacements/export` | `src@dst` 形式のテキスト |
+| POST | `/replacements/import` | `src@dst` 形式(1行1件, `#`始まりはコメント)をボディに送って一括登録 |
+
+```bash
+curl -X POST http://localhost:8896/replacements -H 'Content-Type: application/json' -d '{"src":"kotoko","dst":"ことこ"}'
+printf 'kotoco@ことこ\n' | curl -X POST http://localhost:8896/replacements/import --data-binary @-
+```
+
+## POST /g2p
+
+テキストがどう読まれるか(音素列)を返します。`use_replacements` (既定 true) で置換後の読みを確認できます。
+
+```json
+{"input":"kotokoです","applied":"ことこです","phonemes":"ko toko desɨ"}
+```
+
+## 履歴
+
+| メソッド | パス | 説明 |
+|---|---|---|
+| GET | `/history?limit=20&offset=0` | 新しい順。`{"total":N,"items":[...]}` (最大1000件保持) |
+| DELETE | `/history` | 全削除 |
 
 ## 注意
 

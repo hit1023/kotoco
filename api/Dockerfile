@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir "kokoro>=0.9.4" "misaki[ja]" fastapi "uvicorn[sta
 RUN python -m unidic download
 COPY app/ /srv/app/
 ENV HF_HOME=/cache/hf
+ENV KOTOCO_DB=/data/kotoco.db
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

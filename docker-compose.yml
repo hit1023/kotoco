@@ -6,6 +6,7 @@ services:
       - "127.0.0.1:8896:8000"   # API / Swagger UI (ローカルのみ): http://localhost:8896/docs。外部へは webui の /api/ 経由
     volumes:
       - ./cache:/cache
+      - ./data:/data
     restart: unless-stopped
 
   webui:

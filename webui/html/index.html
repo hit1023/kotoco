@@ -1,37 +1,379 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>kotoco</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2322d3ee'/%3E%3Cstop offset='.55' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M16 32h4M24 22v20M32 14v36M40 22v20M48 28v8' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
-body{font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem}
-textarea{width:100%;height:9rem;font-size:1rem;padding:.5rem;box-sizing:border-box}
-.row{display:flex;gap:.75rem;margin:.75rem 0;flex-wrap:wrap;align-items:center}
-button{font-size:1rem;padding:.5rem 1.2rem}
-#st{color:#666;font-size:.9rem}
-</style></head><body>
-<h1>kotoco</h1>
-<textarea id="t">こんにちは。Kokoroで音声合成を試しています。</textarea>
-<div class="row">
- <label>言語 <select id="l"><option value="j">日本語</option><option value="a">English</option></select></label>
- <label>声 <select id="v"></select></label>
- <label>速度 <input id="s" type="range" min="0.6" max="1.5" step="0.1" value="1"> <span id="sv">1.0</span></label>
+:root{
+  --bg:#05060d; --panel:rgba(255,255,255,.04); --panel-b:rgba(255,255,255,.09);
+  --txt:#e6e8f2; --mut:#8a90a8; --dim:#5a6078;
+  --c1:#22d3ee; --c2:#8b5cf6; --c3:#ec4899; --ok:#34d399; --bad:#fb7185;
+  --grad:linear-gradient(120deg,var(--c1),var(--c2) 55%,var(--c3));
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+.aurora{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;filter:blur(110px);opacity:.28;animation:drift 22s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:520px;height:520px;background:var(--c1);top:-160px;left:-120px}
+.aurora i:nth-child(2){width:600px;height:600px;background:var(--c2);top:20%;right:-200px;animation-delay:-8s}
+.aurora i:nth-child(3){width:460px;height:460px;background:var(--c3);bottom:-180px;left:25%;animation-delay:-15s;opacity:.2}
+@keyframes drift{to{transform:translate(60px,-40px) scale(1.15)}}
+.grid{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:44px 44px;mask-image:radial-gradient(ellipse at 50% 0,#000 20%,transparent 75%)}
+.wrap{max-width:920px;margin:0 auto;padding:28px 16px 80px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--grad);display:grid;place-items:center;box-shadow:0 0 32px rgba(139,92,246,.55)}
+.logo svg{width:26px;height:26px}
+h1{margin:0;font-size:34px;letter-spacing:-.03em;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);font-size:13px;margin:0 0 22px 60px;font-family:var(--mono);letter-spacing:.02em}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font:12px var(--mono);color:var(--mut)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 0 transparent}
+.dot.on{background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.dot.off{background:var(--bad);box-shadow:0 0 12px var(--bad)}
+nav{display:flex;gap:4px;padding:5px;border:1px solid var(--panel-b);border-radius:14px;background:var(--panel);backdrop-filter:blur(14px);margin-bottom:18px;overflow-x:auto}
+nav button{flex:1;min-width:max-content;border:0;background:none;color:var(--mut);padding:10px 14px;border-radius:10px;font:600 13px var(--sans);cursor:pointer;transition:.2s;white-space:nowrap}
+nav button:hover{color:var(--txt)}
+nav button.on{color:#fff;background:linear-gradient(120deg,rgba(34,211,238,.22),rgba(139,92,246,.3),rgba(236,72,153,.22));box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 0 24px rgba(139,92,246,.2)}
+.card{border:1px solid var(--panel-b);border-radius:18px;background:var(--panel);backdrop-filter:blur(16px);padding:20px;margin-bottom:16px}
+.card h2{margin:0 0 14px;font:700 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:14px;height:2px;background:var(--grad);border-radius:2px}
+label.f{display:block;font-size:12px;color:var(--mut);margin-bottom:6px}
+textarea,input[type=text],select{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--panel-b);border-radius:12px;color:var(--txt);font:15px var(--sans);padding:12px 14px;outline:0;transition:.2s}
+textarea{min-height:140px;resize:vertical;line-height:1.7}
+textarea:focus,input:focus,select:focus{border-color:rgba(139,92,246,.7);box-shadow:0 0 0 3px rgba(139,92,246,.18)}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat}
+select option{background:#0d0f1c}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>*{flex:1;min-width:150px}
+.meta{display:flex;justify-content:space-between;font:12px var(--mono);color:var(--dim);margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--panel-b);background:rgba(0,0,0,.3);color:var(--mut);border-radius:999px;padding:7px 14px;font:600 12px var(--mono);cursor:pointer;transition:.2s}
+.chip:hover{color:var(--txt);border-color:rgba(255,255,255,.25)}
+.chip.on{color:#fff;border-color:transparent;background:var(--grad);box-shadow:0 0 20px rgba(139,92,246,.4)}
+.seg{display:inline-flex;border:1px solid var(--panel-b);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:rgba(0,0,0,.3);color:var(--mut);padding:9px 16px;font:700 12px var(--mono);cursor:pointer}
+.seg button.on{background:var(--grad);color:#fff}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,.1);outline:0;padding:0;border:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(139,92,246,.5),0 0 18px var(--c2);cursor:pointer}
+.sv{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.sv b{font:700 18px var(--mono);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sw{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mut);cursor:pointer;user-select:none}
+.sw input{display:none}
+.sw span{width:38px;height:22px;border-radius:22px;background:rgba(255,255,255,.12);position:relative;transition:.2s}
+.sw span::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.sw input:checked+span{background:var(--grad)}
+.sw input:checked+span::after{transform:translateX(16px)}
+.btn{border:0;border-radius:12px;padding:13px 22px;font:700 14px var(--sans);color:#fff;cursor:pointer;transition:.2s;background:rgba(255,255,255,.08);border:1px solid var(--panel-b)}
+.btn:hover{background:rgba(255,255,255,.14)}
+.btn.go{width:100%;font-size:16px;padding:16px;border:0;background:var(--grad);box-shadow:0 8px 40px rgba(139,92,246,.45);position:relative;overflow:hidden}
+.btn.go:hover{transform:translateY(-1px);box-shadow:0 12px 48px rgba(139,92,246,.6)}
+.btn.go:disabled{opacity:.6;cursor:wait;transform:none}
+.btn.go.busy::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35),transparent 70%);animation:sh 1s linear infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.btn.sm{padding:6px 12px;font-size:12px;border-radius:9px}
+.btn.del{color:var(--bad);border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.08)}
+.btn.arm{background:var(--bad);color:#fff}
+.viz{height:96px;border-radius:14px;background:rgba(0,0,0,.4);border:1px solid var(--panel-b);position:relative;overflow:hidden}
+.viz canvas{width:100%;height:100%;display:block}
+.viz .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font:12px var(--mono);letter-spacing:.2em}
+.player{display:flex;align-items:center;gap:12px;margin-top:12px}
+.player audio{flex:1;height:36px;filter:invert(.9) hue-rotate(200deg)}
+.info{font:12px var(--mono);color:var(--mut);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap}
+.info b{color:var(--c1);font-weight:600}
+.applied{font-size:13px;color:var(--mut);margin-top:8px}.applied code{color:var(--c1)}
+pre.code{margin:0;padding:16px;border-radius:12px;background:rgba(0,0,0,.45);border:1px solid var(--panel-b);font:12.5px/1.65 var(--mono);color:#c5cae9;overflow:auto;white-space:pre-wrap;word-break:break-all}
+pre.code .k{color:var(--c1)}pre.code .s{color:#a5f3a0}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--panel-b);border-radius:12px;background:rgba(0,0,0,.25);flex-wrap:wrap}
+.item .a{flex:1;min-width:120px;word-break:break-all}
+.item .arrow{color:var(--c2);font-family:var(--mono)}
+.item .src{font:600 14px var(--mono);color:var(--c1)}
+.item .dst{font:600 14px var(--sans)}
+.item .tx{flex:1;min-width:180px}
+.item .tx small{display:block;color:var(--dim);font:11px var(--mono);margin-top:3px}
+.ph-s{font:13px var(--mono);color:#fbbf24}
+.empty{text-align:center;color:var(--dim);padding:28px;font:12px var(--mono);letter-spacing:.1em}
+.drop{border:1.5px dashed rgba(255,255,255,.18);border-radius:14px;padding:16px;text-align:center;color:var(--mut);font-size:13px;transition:.2s;cursor:pointer}
+.drop.over{border-color:var(--c2);background:rgba(139,92,246,.12);color:#fff}
+.bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;width:0;background:var(--grad);transition:width .2s}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,30px);opacity:0;background:rgba(15,17,32,.95);border:1px solid var(--panel-b);padding:11px 18px;border-radius:12px;font-size:13px;transition:.3s;z-index:9;backdrop-filter:blur(10px)}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast.err{border-color:rgba(251,113,133,.6);color:var(--bad)}
+.pg{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:14px;font:12px var(--mono);color:var(--mut)}
+.hide{display:none!important}
+@media(max-width:560px){h1{font-size:28px}.sub{margin-left:0}.status{display:none}}
+</style>
+</head>
+<body>
+<div class="aurora"><i></i><i></i><i></i></div><div class="grid"></div>
+<div class="wrap">
+  <header>
+    <div class="logo"><svg viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"><path d="M12 32h4M24 20v24M32 10v44M40 20v24M52 27v10"/></svg></div>
+    <h1>kotoco</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="stx">connecting</span></div>
+  </header>
+  <p class="sub">// text-to-speech · Kokoro-82M · CPU</p>
+
+  <nav id="nav">
+    <button data-t="synth" class="on">SYNTH 音声合成</button>
+    <button data-t="rules">REPLACE 置換ルール</button>
+    <button data-t="reading">READING 読みチェック</button>
+    <button data-t="history">HISTORY 履歴</button>
+    <button data-t="api">API</button>
+  </nav>
+
+  <!-- SYNTH -->
+  <section id="t-synth">
+    <div class="card">
+      <h2>Voice</h2>
+      <div class="row" style="margin-bottom:14px">
+        <div style="flex:0 0 200px"><label class="f">言語</label>
+          <select id="lang"><option value="j">日本語</option><option value="a">English</option></select></div>
+        <div style="flex:2 1 300px"><label class="f">ボイス</label><div class="chips" id="voices"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Text</h2>
+      <textarea id="text" maxlength="2000" placeholder="読み上げたいテキストを入力…  (Ctrl/⌘ + Enter で生成)">こんにちは。kotoco で音声合成を試しています。</textarea>
+      <div class="meta"><span id="cnt">0 / 2000</span><span>Ctrl/⌘+Enter</span></div>
+    </div>
+    <div class="card">
+      <h2>Parameters</h2>
+      <div class="row">
+        <div><div class="sv"><label class="f" style="margin:0">話速 speed</label><b id="spv">1.0</b></div>
+          <input type="range" id="speed" min="0.5" max="2" step="0.05" value="1"></div>
+        <div style="flex:0 0 auto"><label class="f">形式</label>
+          <div class="seg" id="fmt"><button data-v="wav" class="on">WAV</button><button data-v="mp3">MP3</button></div></div>
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="usrep" checked><span></span>置換ルール適用</label></div>
+      </div>
+    </div>
+    <button class="btn go" id="go">▶ 音声を生成</button>
+    <div class="card" style="margin-top:16px">
+      <h2>Output</h2>
+      <div class="viz"><canvas id="cv"></canvas><div class="ph" id="vph">NO SIGNAL</div></div>
+      <div class="player"><audio id="au" controls></audio><a class="btn sm" id="dl" download style="text-decoration:none" hidden>⬇ 保存</a></div>
+      <div class="info" id="info"></div>
+      <div class="applied hide" id="applied"></div>
+    </div>
+    <div class="card"><h2>curl</h2><pre class="code" id="curl"></pre>
+      <div style="margin-top:10px"><button class="btn sm" id="cpcurl">📋 コピー</button></div></div>
+  </section>
+
+  <!-- RULES -->
+  <section id="t-rules" class="hide">
+    <div class="card">
+      <h2>Add rule</h2>
+      <div class="row">
+        <div><label class="f">置換前 (大文字小文字は区別しません)</label><input type="text" id="r-src" placeholder="kotoko"></div>
+        <div><label class="f">置換後 (ひらがな推奨)</label><input type="text" id="r-dst" placeholder="ことこ"></div>
+        <div style="flex:0 0 auto"><button class="btn" id="r-add" style="background:var(--grad);border:0">＋ 登録</button></div>
+      </div>
+      <p style="color:var(--mut);font-size:12px;margin:12px 0 0">音声合成の前に適用されます。長い語が優先され、置換結果は再置換されません。</p>
+    </div>
+    <div class="card">
+      <h2>Import / Export</h2>
+      <div class="row" style="align-items:stretch">
+        <div class="drop" id="drop">📥 <code>src@dst</code> 形式の .txt をドロップ / クリックで選択</div>
+        <div style="flex:0 0 auto;display:flex;align-items:center"><a class="btn" id="exp" href="/api/replacements/export" download="kotoco-replacements.txt" style="text-decoration:none">📤 エクスポート</a></div>
+      </div>
+      <input type="file" id="file" accept=".txt,text/plain" class="hide">
+    </div>
+    <div class="card">
+      <h2>Rules <span id="r-n" style="color:var(--dim)"></span></h2>
+      <input type="text" id="r-q" placeholder="検索…" style="margin-bottom:12px">
+      <div class="list" id="r-list"></div>
+    </div>
+  </section>
+
+  <!-- READING -->
+  <section id="t-reading" class="hide">
+    <div class="card">
+      <h2>Reading check</h2>
+      <label class="f">単語を1行ずつ入力 (置換ルール適用後の読み=音素列を確認できます)</label>
+      <textarea id="g-in" style="min-height:120px" placeholder="kotoko&#10;kotoco&#10;Kokoro"></textarea>
+      <div class="row" style="margin-top:12px;align-items:center">
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="g-rep" checked><span></span>置換ルール適用</label></div>
+        <div style="flex:0 0 auto"><button class="btn" id="g-run" style="background:var(--grad);border:0">▶ チェック</button></div>
+      </div>
+      <div class="bar"><i id="g-bar"></i></div>
+    </div>
+    <div class="card"><h2>Result</h2><div class="list" id="g-list"><div class="empty">NO DATA</div></div></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="t-history" class="hide">
+    <div class="card">
+      <h2>History <span id="h-n" style="color:var(--dim)"></span></h2>
+      <div class="list" id="h-list"></div>
+      <div class="pg"><button class="btn sm" id="h-prev">‹ PREV</button><span id="h-pg"></span><button class="btn sm" id="h-next">NEXT ›</button></div>
+      <div style="text-align:right;margin-top:12px"><button class="btn sm del" id="h-clear">🗑 全削除</button></div>
+    </div>
+  </section>
+
+  <!-- API -->
+  <section id="t-api" class="hide">
+    <div class="card"><h2>API</h2>
+      <p style="margin:0 0 14px;color:var(--mut);font-size:14px;line-height:1.7">REST API の対話的ドキュメントは Swagger UI で確認できます。</p>
+      <a class="btn" href="/api/docs" target="_blank" style="text-decoration:none;display:inline-block;background:var(--grad);border:0">Swagger UI を開く ↗</a>
+      <a class="btn" href="/api/redoc" target="_blank" style="text-decoration:none;display:inline-block;margin-left:8px">ReDoc ↗</a>
+    </div>
+    <div class="card"><h2>Quick start</h2><pre class="code">curl -X POST <span class="s" id="base"></span>/api/tts \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"こんにちは。","voice":"jf_alpha","format":"mp3"}' -o out.mp3</pre></div>
+  </section>
 </div>
-<div class="row"><label>形式 <select id="f"><option>wav</option><option>mp3</option></select></label> <a id="dl" download style="display:none">ダウンロード</a></div>
-<div class="row"><button id="go">読み上げ</button><span id="st"></span></div>
-<audio id="a" controls style="width:100%"></audio>
+<div class="toast" id="toast"></div>
+
 <script>
-const $=id=>document.getElementById(id);let V={};
-async function init(){V=await (await fetch('/api/voices')).json();fill()}
-function fill(){$('v').innerHTML=V[$('l').value].map(x=>`<option>${x}</option>`).join('')}
-$('l').onchange=()=>{fill();$('t').value=$('l').value==='j'?'こんにちは。Kokoroで音声合成を試しています。':'Hello, this is a test of Kokoro text to speech.'};
-$('s').oninput=()=>$('sv').textContent=(+$('s').value).toFixed(1);
-$('go').onclick=async()=>{
- $('go').disabled=true;$('st').textContent='生成中…(初回はモデルDLあり)';const t0=performance.now();
- try{const r=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({text:$('t').value,lang:$('l').value,voice:$('v').value,speed:+$('s').value,format:$('f').value})});
-  if(!r.ok)throw new Error(await r.text());
-  const b=await r.blob();const u=URL.createObjectURL(b);$('a').src=u;$('dl').href=u;$('dl').download='kotoco.'+$('f').value;$('dl').style.display='';$('a').play();
-  $('st').textContent=`完了 ${((performance.now()-t0)/1000).toFixed(1)}秒`;
- }catch(e){$('st').textContent='エラー: '+e.message}
- $('go').disabled=false};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let VOICES={}, state={lang:'j',voice:'jf_alpha',fmt:'wav'};
+const API='/api';
+function toast(m,err){const t=$('#toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(toast.h);toast.h=setTimeout(()=>t.className='toast',2600)}
+async function jf(url,opt){const r=await fetch(API+url,opt);if(!r.ok)throw new Error((await r.text()).slice(0,200));return r}
+
+/* tabs */
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+  ['synth','rules','reading','history','api'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t));
+  if(b.dataset.t==='rules')loadRules(); if(b.dataset.t==='history')loadHistory(0);};
+function switchTab(t){$(`#nav button[data-t=${t}]`).click()}
+
+/* init */
+async function init(){
+  $('#base').textContent=location.origin;
+  try{VOICES=await (await jf('/voices')).json();$('#dot').className='dot on';$('#stx').textContent='online'}
+  catch(e){$('#dot').className='dot off';$('#stx').textContent='offline';return}
+  drawVoices();updCurl();
+}
+function drawVoices(){
+  const vs=VOICES[state.lang]||[];if(!vs.includes(state.voice))state.voice=vs[0];
+  $('#voices').innerHTML=vs.map(v=>`<button class="chip${v===state.voice?' on':''}" data-v="${v}">${v}</button>`).join('');
+}
+$('#voices').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;state.voice=b.dataset.v;drawVoices();updCurl()};
+$('#lang').onchange=e=>{state.lang=e.target.value;drawVoices();updCurl();
+  $('#text').value=state.lang==='j'?'こんにちは。kotoco で音声合成を試しています。':'Hello, this is a test of kotoco text to speech.';cnt()};
+$('#fmt').onclick=e=>{const b=e.target.closest('button');if(!b)return;state.fmt=b.dataset.v;$$('#fmt button').forEach(x=>x.classList.toggle('on',x===b));updCurl()};
+$('#speed').oninput=e=>{$('#spv').textContent=(+e.target.value).toFixed(2).replace(/0$/,'');updCurl()};
+$('#usrep').onchange=updCurl;
+function cnt(){$('#cnt').textContent=$('#text').value.length+' / 2000';updCurl()}
+$('#text').oninput=cnt;cnt();
+function body(){return{text:$('#text').value,lang:state.lang,voice:state.voice,speed:+$('#speed').value,format:state.fmt,use_replacements:$('#usrep').checked}}
+function updCurl(){
+  const b=body(),t=b.text.length>40?b.text.slice(0,40)+'…':b.text;
+  $('#curl').innerHTML=`<span class="k">curl</span> -X POST ${esc(location.origin)}/api/tts \\\n  -H 'Content-Type: application/json' \\\n  -d '${esc(JSON.stringify({...b,text:t}))}' \\\n  -o out.${b.format}`;
+}
+$('#cpcurl').onclick=()=>{const b=body();navigator.clipboard.writeText(`curl -X POST ${location.origin}/api/tts -H 'Content-Type: application/json' -d '${JSON.stringify(b).replace(/'/g,"'\\''")}' -o out.${b.format}`).then(()=>toast('コピーしました'))};
+
+/* visualizer */
+let actx,analyser,srcNode,raf;
+const cv=$('#cv'),g=cv.getContext('2d');
+function fit(){const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d}
+addEventListener('resize',fit);fit();
+function hookAudio(){
+  if(actx)return;actx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=actx.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=.82;
+  srcNode=actx.createMediaElementSource($('#au'));srcNode.connect(analyser);analyser.connect(actx.destination);
+}
+function draw(){
+  raf=requestAnimationFrame(draw);const W=cv.width,H=cv.height,n=analyser.frequencyBinCount,d=new Uint8Array(n);
+  analyser.getByteFrequencyData(d);g.clearRect(0,0,W,H);
+  const bars=56,bw=W/bars,gr=g.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#22d3ee');gr.addColorStop(.55,'#8b5cf6');gr.addColorStop(1,'#ec4899');
+  g.fillStyle=gr;g.shadowColor='#8b5cf6';g.shadowBlur=14;
+  for(let i=0;i<bars;i++){const v=d[Math.floor(i*n*.7/bars)]/255,h=Math.max(3,v*H*.92);
+    const x=i*bw+bw*.2,w=bw*.6,y=(H-h)/2;g.beginPath();g.roundRect(x,y,w,h,w/2);g.fill()}
+}
+$('#au').onplay=()=>{hookAudio();actx.resume();$('#vph').classList.add('hide');cancelAnimationFrame(raf);draw()};
+$('#au').onpause=$('#au').onended=()=>{setTimeout(()=>{if($('#au').paused){cancelAnimationFrame(raf);g.clearRect(0,0,cv.width,cv.height);$('#vph').classList.remove('hide')}},300)};
+
+/* generate */
+async function synth(b){
+  const r=await jf('/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+  return{blob:await r.blob(),ms:r.headers.get('X-Generation-Ms'),applied:decodeURIComponent(r.headers.get('X-Applied-Text')||'')};
+}
+async function generate(){
+  const b=body();if(!b.text.trim())return toast('テキストを入力してください',1);
+  const go=$('#go');go.disabled=true;go.classList.add('busy');go.textContent='生成中…';
+  try{
+    const{blob,ms,applied}=await synth(b),u=URL.createObjectURL(blob),au=$('#au');
+    au.src=u;$('#dl').href=u;$('#dl').download='kotoco.'+b.format;$('#dl').hidden=false;
+    $('#info').innerHTML=`<span>生成 <b>${ms} ms</b></span><span>形式 <b>${b.format.toUpperCase()}</b></span><span>サイズ <b>${(blob.size/1024).toFixed(1)} KB</b></span><span>voice <b>${esc(b.voice)}</b></span>`;
+    const ap=$('#applied');if(applied&&applied!==b.text){ap.innerHTML='置換後: <code>'+esc(applied)+'</code>';ap.classList.remove('hide')}else ap.classList.add('hide');
+    au.play().catch(()=>{});
+  }catch(e){toast('エラー: '+e.message,1)}
+  go.disabled=false;go.classList.remove('busy');go.textContent='▶ 音声を生成';
+}
+$('#go').onclick=generate;
+$('#text').addEventListener('keydown',e=>{if(e.isComposing||e.keyCode===229)return;if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();generate()}});
+
+/* rules */
+let RULES=[];
+async function loadRules(){try{RULES=await (await jf('/replacements')).json();renderRules()}catch(e){toast(e.message,1)}}
+function renderRules(){
+  const q=$('#r-q').value.toLowerCase(),L=RULES.filter(r=>!q||r.src.toLowerCase().includes(q)||r.dst.includes(q));
+  $('#r-n').textContent='('+RULES.length+')';
+  $('#r-list').innerHTML=L.length?L.map(r=>`<div class="item"><span class="a src">${esc(r.src)}</span><span class="arrow">→</span><span class="a dst">${esc(r.dst)}</span><button class="btn sm" data-play="${esc(r.src)}">▶</button><button class="btn sm del" data-del="${esc(r.src)}">削除</button></div>`).join(''):'<div class="empty">NO RULES</div>';
+}
+$('#r-q').oninput=renderRules;
+$('#r-add').onclick=async()=>{const src=$('#r-src').value.trim(),dst=$('#r-dst').value.trim();if(!src||!dst)return toast('両方入力してください',1);
+  try{await jf('/replacements',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({src,dst})});$('#r-src').value=$('#r-dst').value='';toast('登録しました');loadRules()}catch(e){toast(e.message,1)}};
+$('#r-dst').addEventListener('keydown',e=>{if(e.isComposing||e.keyCode===229)return;if(e.key==='Enter')$('#r-add').click()});
+$('#r-list').onclick=async e=>{
+  const p=e.target.closest('[data-play]');if(p){playQuick(p.dataset.play);return}
+  const d=e.target.closest('[data-del]');if(!d)return;
+  if(!d.classList.contains('arm')){d.classList.add('arm');d.textContent='本当に削除?';setTimeout(()=>{d.classList.remove('arm');d.textContent='削除'},3000);return}
+  try{await jf('/replacements?src='+encodeURIComponent(d.dataset.del),{method:'DELETE'});toast('削除しました');loadRules()}catch(er){toast(er.message,1)}};
+async function playQuick(text){try{const{blob}=await synth({text,lang:state.lang,voice:state.voice,speed:+$('#speed').value,format:'mp3',record_history:false});new Audio(URL.createObjectURL(blob)).play()}catch(e){toast(e.message,1)}}
+const drop=$('#drop');
+drop.onclick=()=>$('#file').click();
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>importFile(e.dataTransfer.files[0]));
+$('#file').onchange=e=>importFile(e.target.files[0]);
+async function importFile(f){if(!f)return;try{const r=await (await jf('/replacements/import',{method:'POST',body:await f.text()})).json();toast(r.imported+' 件インポートしました');loadRules()}catch(e){toast(e.message,1)}}
+
+/* reading check */
+$('#g-run').onclick=async()=>{
+  const words=$('#g-in').value.split('\n').map(s=>s.trim()).filter(Boolean);if(!words.length)return;
+  const list=$('#g-list');list.innerHTML='';let done=0;$('#g-bar').style.width='0';
+  for(const w of words){
+    try{const r=await (await jf('/g2p',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:w,lang:state.lang,use_replacements:$('#g-rep').checked})})).json();
+      const el=document.createElement('div');el.className='item';
+      el.innerHTML=`<div class="tx"><b>${esc(r.input)}</b>${r.applied!==r.input?` <span class="arrow">→</span> ${esc(r.applied)}`:''}<small>phonemes</small><span class="ph-s">${esc(r.phonemes)}</span></div><button class="btn sm" data-p="${esc(r.applied)}">▶</button><button class="btn sm" data-rule="${esc(r.input)}">＋ 置換へ</button>`;
+      list.appendChild(el);
+    }catch(e){list.insertAdjacentHTML('beforeend',`<div class="item"><span class="a">${esc(w)}</span><span style="color:var(--bad)">${esc(e.message)}</span></div>`)}
+    $('#g-bar').style.width=(++done/words.length*100)+'%';
+  }
+};
+$('#g-list').onclick=e=>{const p=e.target.closest('[data-p]');if(p)return playQuick(p.dataset.p);
+  const r=e.target.closest('[data-rule]');if(r){switchTab('rules');$('#r-src').value=r.dataset.rule;$('#r-dst').focus()}};
+
+/* history */
+let H={off:0,lim:10,total:0};
+async function loadHistory(off){
+  H.off=Math.max(0,off);try{const d=await (await jf(`/history?limit=${H.lim}&offset=${H.off}`)).json();H.total=d.total;
+    $('#h-n').textContent='('+d.total+')';
+    $('#h-list').innerHTML=d.items.length?d.items.map(i=>`<div class="item"><div class="tx"><span>${esc(i.text)}</span><small>${new Date(i.created_at*1000).toLocaleString('ja-JP')} · ${esc(i.voice)} · ×${i.speed} · ${i.format.toUpperCase()} · ${i.ms}ms${i.applied!==i.text?' · 置換あり':''}</small></div><button class="btn sm" data-hp='${esc(JSON.stringify({text:i.text,lang:i.lang,voice:i.voice,speed:i.speed}))}'>▶ 再生</button><button class="btn sm" data-hc="${esc(i.text)}">📋</button><button class="btn sm" data-hu="${esc(i.text)}">↺ 入力へ</button></div>`).join(''):'<div class="empty">NO HISTORY</div>';
+    const pages=Math.max(1,Math.ceil(d.total/H.lim));$('#h-pg').textContent=`${Math.floor(H.off/H.lim)+1} / ${pages}`;
+  }catch(e){toast(e.message,1)}
+}
+$('#h-prev').onclick=()=>loadHistory(H.off-H.lim);
+$('#h-next').onclick=()=>{if(H.off+H.lim<H.total)loadHistory(H.off+H.lim)};
+$('#h-list').onclick=async e=>{
+  const p=e.target.closest('[data-hp]');if(p){try{const b=JSON.parse(p.dataset.hp);const{blob}=await synth({...b,format:'mp3',record_history:false});new Audio(URL.createObjectURL(blob)).play()}catch(er){toast(er.message,1)}return}
+  const c=e.target.closest('[data-hc]');if(c){navigator.clipboard.writeText(c.dataset.hc).then(()=>toast('コピーしました'));return}
+  const u=e.target.closest('[data-hu]');if(u){$('#text').value=u.dataset.hu;cnt();switchTab('synth')}};
+$('#h-clear').onclick=async e=>{const b=e.target;if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='本当に全削除?';setTimeout(()=>{b.classList.remove('arm');b.textContent='🗑 全削除'},3000);return}
+  try{await jf('/history',{method:'DELETE'});toast('履歴を削除しました');loadHistory(0)}catch(er){toast(er.message,1)}};
+
 init();
-</script></body></html>
+</script>
+</body>
+</html>

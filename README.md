@@ -11,6 +11,14 @@ kotoco/
 └── docker-compose.yml
 ```
 
+## 機能
+
+- 🎵 音声合成: ボイス/話速/WAV・MP3 選択、波形ビジュアライザー、curl サンプルのリアルタイム表示
+- 📝 置換ルール: 合成前の置換辞書 (`kotoko → ことこ`)。`src@dst` 形式の一括インポート/エクスポート
+- 🔤 読みチェック: 単語がどう読まれるか(音素列)を確認し、そのまま置換ルールへ登録
+- 📜 履歴: 生成履歴の再生・コピー・再入力
+- API は Swagger UI (`/api/docs`) と [api/docs/API.md](api/docs/API.md)
+
 ## 使い方
 
 ```bash
@@ -35,7 +43,7 @@ API の詳細は [api/docs/API.md](api/docs/API.md) を参照。
 
 - 推論は CPU です。Docker Desktop for Mac の Linux VM からは Apple Neural Engine / Metal を使えません。
   Mac mini (M4) で約3秒の音声を約1.2秒で生成できます (初回はモデルDLで十数秒)。
-- モデルは `./cache` に保存されます (git 管理外)。
+- モデルは `./cache`、置換ルールと履歴(SQLite)は `./data` に保存されます (どちらも git 管理外)。
 - 日本語ボイス: jf_alpha / jf_gongitsune / jf_nezumi / jf_tebukuro / jm_kumo
 - ボイスの学習・声のクローンは Kokoro 公式では非対応です。
 
