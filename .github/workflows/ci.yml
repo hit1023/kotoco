@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose
+        run: docker compose config -q
+      - name: Build images
+        run: docker compose build
+      - name: Smoke test (API /health, WebUI)
+        run: |
+          docker compose up -d
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8896/health && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8896/voices
+          curl -fsS http://127.0.0.1:8895/ | grep -q kotoco
+          curl -fsS http://127.0.0.1:8895/api/voices
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs

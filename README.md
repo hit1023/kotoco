@@ -37,3 +37,15 @@ API の詳細は [api/docs/API.md](api/docs/API.md) を参照。
 - モデルは `./cache` に保存されます (git 管理外)。
 - 日本語ボイス: jf_alpha / jf_gongitsune / jf_nezumi / jf_tebukuro / jm_kumo
 - ボイスの学習・声のクローンは Kokoro 公式では非対応です。
+
+## CI/CD
+
+- CI: GitHub Actions (`.github/workflows/ci.yml`) が push / PR でイメージをビルドし、`/health` などを確認します。
+- CD: h-1 では cron が `scripts/autodeploy.sh` を3分ごとに実行し、`origin/main` に新しいコミットがあれば
+  `docker compose up -d --build` で反映します。`/health` が通らなければ直前のコミットへロールバックします。
+
+```
+*/3 * * * * flock -n /tmp/kotoco-autodeploy.lock /home/hit/docker/kotoco/scripts/autodeploy.sh >> /home/hit/docker/kotoco/autodeploy.log 2>&1 # kotoco-autodeploy
+```
+
+本番: https://kotoko.s-quad.com （h-1、NPM で Basic 認証）
