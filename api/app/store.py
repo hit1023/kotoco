@@ -20,6 +20,7 @@ def _conn():
 def init():
     with _lock, _conn() as c:
         c.execute("CREATE TABLE IF NOT EXISTS replacements (src TEXT PRIMARY KEY, dst TEXT NOT NULL)")
+        c.execute("CREATE TABLE IF NOT EXISTS pronunciations (word TEXT NOT NULL, lang TEXT NOT NULL, ps TEXT NOT NULL, PRIMARY KEY(word, lang))")
         c.execute(
             "CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, applied TEXT,"
             " lang TEXT, voice TEXT, speed REAL, format TEXT, ms INTEGER, created_at REAL)"
@@ -88,3 +89,40 @@ def list_history(limit, offset):
 def clear_history():
     with _lock, _conn() as c:
         c.execute("DELETE FROM history")
+
+
+# ---- 発音辞書 (単語 -> 音素列) ----
+_pron = {}
+
+
+def list_prons(lang=None):
+    with _lock, _conn() as c:
+        q, a = "SELECT word, lang, ps FROM pronunciations", ()
+        if lang:
+            q, a = q + " WHERE lang=?", (lang,)
+        return [dict(r) for r in c.execute(q + " ORDER BY word", a)]
+
+
+def upsert_pron(word, lang, ps):
+    with _lock, _conn() as c:
+        c.execute(
+            "INSERT INTO pronunciations(word, lang, ps) VALUES(?,?,?) ON CONFLICT(word, lang) DO UPDATE SET ps=excluded.ps",
+            (word, lang, ps),
+        )
+    _pron.clear()
+
+
+def delete_pron(word, lang):
+    with _lock, _conn() as c:
+        n = c.execute("DELETE FROM pronunciations WHERE word=? AND lang=?", (word, lang)).rowcount
+    _pron.clear()
+    return n
+
+
+def pron_pattern(lang):
+    """(正規表現, {小文字の単語: 音素列})。辞書が空なら (None, {})。"""
+    if lang not in _pron:
+        m = {r["word"].lower(): r["ps"] for r in list_prons(lang)}
+        keys = sorted(m, key=len, reverse=True)
+        _pron[lang] = (re.compile("|".join(re.escape(k) for k in keys), re.I) if keys else None, m)
+    return _pron[lang]

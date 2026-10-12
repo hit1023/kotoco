@@ -124,6 +124,7 @@ pre.code .k{color:var(--c1)}pre.code .s{color:#a5f3a0}
   <nav id="nav">
     <button data-t="synth" class="on">SYNTH 音声合成</button>
     <button data-t="rules">REPLACE 置換ルール</button>
+    <button data-t="pron">PRONOUNCE 発音辞書</button>
     <button data-t="reading">READING 読みチェック</button>
     <button data-t="history">HISTORY 履歴</button>
     <button data-t="api">API</button>
@@ -151,7 +152,8 @@ pre.code .k{color:var(--c1)}pre.code .s{color:#a5f3a0}
           <input type="range" id="speed" min="0.5" max="2" step="0.05" value="1"></div>
         <div style="flex:0 0 auto"><label class="f">形式</label>
           <div class="seg" id="fmt"><button data-v="wav" class="on">WAV</button><button data-v="mp3">MP3</button></div></div>
-        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="usrep" checked><span></span>置換ルール適用</label></div>
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="usrep" checked><span></span>置換ルール</label></div>
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="uspron" checked><span></span>発音辞書</label></div>
       </div>
     </div>
     <button class="btn go" id="go">▶ 音声を生成</button>
@@ -192,6 +194,38 @@ pre.code .k{color:var(--c1)}pre.code .s{color:#a5f3a0}
     </div>
   </section>
 
+  <!-- PRONOUNCE -->
+  <section id="t-pron" class="hide">
+    <div class="card">
+      <h2>Direct pronunciation</h2>
+      <p style="color:var(--mut);font-size:13px;line-height:1.7;margin:0 0 14px">単語に <b style="color:var(--txt)">音素列</b> を直接割り当てます。形態素解析の区切りや誤読を回避できます。例: <code style="color:var(--c1)">ことこ</code> → <code style="color:#fbbf24">kotoko</code></p>
+      <div class="row">
+        <div><label class="f">単語 (大文字小文字は区別しません)</label><input type="text" id="p-word" placeholder="ことこ"></div>
+        <div style="flex:2 1 260px"><label class="f">音素列</label><input type="text" id="p-ps" placeholder="kotoko" style="font-family:var(--mono);color:#fbbf24" spellcheck="false"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="p-fetch" style="flex:0 0 auto">🔍 現在の読みを取得</button>
+        <button class="btn" id="p-play" style="flex:0 0 auto">▶ 試聴</button>
+        <button class="btn" id="p-add" style="flex:0 0 auto;background:var(--grad);border:0">＋ 登録</button>
+      </div>
+      <label class="f" style="margin-top:16px">音素パレット (クリックで追加)</label>
+      <div class="chips" id="p-pal" style="gap:5px"></div>
+    </div>
+    <div class="card">
+      <h2>Import / Export</h2>
+      <div class="row" style="align-items:stretch">
+        <div class="drop" id="p-drop">📥 <code>単語@音素列</code> 形式の .txt をドロップ / クリックで選択</div>
+        <div style="flex:0 0 auto;display:flex;align-items:center"><a class="btn" href="/api/pronunciations/export" download="kotoco-pronunciations.txt" style="text-decoration:none">📤 エクスポート</a></div>
+      </div>
+      <input type="file" id="p-file" accept=".txt,text/plain" class="hide">
+    </div>
+    <div class="card">
+      <h2>Dictionary <span id="p-n" style="color:var(--dim)"></span></h2>
+      <input type="text" id="p-q" placeholder="検索…" style="margin-bottom:12px">
+      <div class="list" id="p-list"></div>
+    </div>
+  </section>
+
   <!-- READING -->
   <section id="t-reading" class="hide">
     <div class="card">
@@ -199,7 +233,8 @@ pre.code .k{color:var(--c1)}pre.code .s{color:#a5f3a0}
       <label class="f">単語を1行ずつ入力 (置換ルール適用後の読み=音素列を確認できます)</label>
       <textarea id="g-in" style="min-height:120px" placeholder="kotoko&#10;kotoco&#10;Kokoro"></textarea>
       <div class="row" style="margin-top:12px;align-items:center">
-        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="g-rep" checked><span></span>置換ルール適用</label></div>
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="g-rep" checked><span></span>置換ルール</label></div>
+        <div style="flex:0 0 auto"><label class="sw"><input type="checkbox" id="g-pron" checked><span></span>発音辞書</label></div>
         <div style="flex:0 0 auto"><button class="btn" id="g-run" style="background:var(--grad);border:0">▶ チェック</button></div>
       </div>
       <div class="bar"><i id="g-bar"></i></div>
@@ -242,8 +277,8 @@ async function jf(url,opt){const r=await fetch(API+url,opt);if(!r.ok)throw new E
 /* tabs */
 $('#nav').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   $$('#nav button').forEach(x=>x.classList.toggle('on',x===b));
-  ['synth','rules','reading','history','api'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t));
-  if(b.dataset.t==='rules')loadRules(); if(b.dataset.t==='history')loadHistory(0);};
+  ['synth','rules','pron','reading','history','api'].forEach(t=>$('#t-'+t).classList.toggle('hide',t!==b.dataset.t));
+  if(b.dataset.t==='rules')loadRules(); if(b.dataset.t==='pron')loadProns(); if(b.dataset.t==='history')loadHistory(0);};
 function switchTab(t){$(`#nav button[data-t=${t}]`).click()}
 
 /* init */
@@ -262,10 +297,10 @@ $('#lang').onchange=e=>{state.lang=e.target.value;drawVoices();updCurl();
   $('#text').value=state.lang==='j'?'こんにちは。kotoco で音声合成を試しています。':'Hello, this is a test of kotoco text to speech.';cnt()};
 $('#fmt').onclick=e=>{const b=e.target.closest('button');if(!b)return;state.fmt=b.dataset.v;$$('#fmt button').forEach(x=>x.classList.toggle('on',x===b));updCurl()};
 $('#speed').oninput=e=>{$('#spv').textContent=(+e.target.value).toFixed(2).replace(/0$/,'');updCurl()};
-$('#usrep').onchange=updCurl;
+$('#usrep').onchange=updCurl;$('#uspron').onchange=updCurl;
 function cnt(){$('#cnt').textContent=$('#text').value.length+' / 2000';updCurl()}
 $('#text').oninput=cnt;cnt();
-function body(){return{text:$('#text').value,lang:state.lang,voice:state.voice,speed:+$('#speed').value,format:state.fmt,use_replacements:$('#usrep').checked}}
+function body(){return{text:$('#text').value,lang:state.lang,voice:state.voice,speed:+$('#speed').value,format:state.fmt,use_replacements:$('#usrep').checked,use_pronunciations:$('#uspron').checked}}
 function updCurl(){
   const b=body(),t=b.text.length>40?b.text.slice(0,40)+'…':b.text;
   $('#curl').innerHTML=`<span class="k">curl</span> -X POST ${esc(location.origin)}/api/tts \\\n  -H 'Content-Type: application/json' \\\n  -d '${esc(JSON.stringify({...b,text:t}))}' \\\n  -o out.${b.format}`;
@@ -344,16 +379,17 @@ $('#g-run').onclick=async()=>{
   const words=$('#g-in').value.split('\n').map(s=>s.trim()).filter(Boolean);if(!words.length)return;
   const list=$('#g-list');list.innerHTML='';let done=0;$('#g-bar').style.width='0';
   for(const w of words){
-    try{const r=await (await jf('/g2p',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:w,lang:state.lang,use_replacements:$('#g-rep').checked})})).json();
+    try{const r=await (await jf('/g2p',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:w,lang:state.lang,use_replacements:$('#g-rep').checked,use_pronunciations:$('#g-pron').checked})})).json();
       const el=document.createElement('div');el.className='item';
-      el.innerHTML=`<div class="tx"><b>${esc(r.input)}</b>${r.applied!==r.input?` <span class="arrow">→</span> ${esc(r.applied)}`:''}<small>phonemes</small><span class="ph-s">${esc(r.phonemes)}</span></div><button class="btn sm" data-p="${esc(r.applied)}">▶</button><button class="btn sm" data-rule="${esc(r.input)}">＋ 置換へ</button>`;
+      el.innerHTML=`<div class="tx"><b>${esc(r.input)}</b>${r.applied!==r.input?` <span class="arrow">→</span> ${esc(r.applied)}`:''}<small>phonemes</small><span class="ph-s">${esc(r.phonemes)}</span></div><button class="btn sm" data-p="${esc(r.applied)}">▶</button><button class="btn sm" data-rule="${esc(r.input)}">＋ 置換へ</button><button class="btn sm" data-pron="${esc(r.input)}" data-ps="${esc(r.phonemes)}">＋ 発音へ</button>`;
       list.appendChild(el);
     }catch(e){list.insertAdjacentHTML('beforeend',`<div class="item"><span class="a">${esc(w)}</span><span style="color:var(--bad)">${esc(e.message)}</span></div>`)}
     $('#g-bar').style.width=(++done/words.length*100)+'%';
   }
 };
 $('#g-list').onclick=e=>{const p=e.target.closest('[data-p]');if(p)return playQuick(p.dataset.p);
-  const r=e.target.closest('[data-rule]');if(r){switchTab('rules');$('#r-src').value=r.dataset.rule;$('#r-dst').focus()}};
+  const r=e.target.closest('[data-rule]');if(r){switchTab('rules');$('#r-src').value=r.dataset.rule;$('#r-dst').focus();return}
+  const q=e.target.closest('[data-pron]');if(q){switchTab('pron');$('#p-word').value=q.dataset.pron;$('#p-ps').value=q.dataset.ps;$('#p-ps').focus()}};
 
 /* history */
 let H={off:0,lim:10,total:0};
@@ -372,6 +408,41 @@ $('#h-list').onclick=async e=>{
   const u=e.target.closest('[data-hu]');if(u){$('#text').value=u.dataset.hu;cnt();switchTab('synth')}};
 $('#h-clear').onclick=async e=>{const b=e.target;if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='本当に全削除?';setTimeout(()=>{b.classList.remove('arm');b.textContent='🗑 全削除'},3000);return}
   try{await jf('/history',{method:'DELETE'});toast('履歴を削除しました');loadHistory(0)}catch(er){toast(er.message,1)}};
+
+/* pronunciations */
+let PRONS=[];
+async function loadProns(){
+  try{PRONS=await (await jf('/pronunciations?lang='+state.lang)).json();renderProns()}catch(e){toast(e.message,1)}
+  if(!$('#p-pal').children.length){try{const v=(await (await jf('/phonemes/vocab')).json()).symbols;
+    const pitch='→↓↗↘ˈˌː';$('#p-pal').innerHTML=[...v].map(c=>`<button class="chip" style="padding:5px 9px;font-size:13px${pitch.includes(c)?';color:#fbbf24':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}catch(e){}}
+}
+function renderProns(){
+  const q=$('#p-q').value.toLowerCase(),L=PRONS.filter(r=>!q||r.word.toLowerCase().includes(q)||r.ps.includes(q));
+  $('#p-n').textContent='('+PRONS.length+')';
+  $('#p-list').innerHTML=L.length?L.map(r=>`<div class="item"><span class="a src">${esc(r.word)}</span><span class="arrow">→</span><span class="a ph-s">${esc(r.ps)}</span><button class="btn sm" data-pp="${esc(r.ps)}">▶</button><button class="btn sm" data-pe="${esc(r.word)}" data-ps="${esc(r.ps)}">編集</button><button class="btn sm del" data-pd="${esc(r.word)}">削除</button></div>`).join(''):'<div class="empty">NO ENTRIES</div>';
+}
+$('#p-q').oninput=renderProns;
+$('#p-pal').onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;const i=$('#p-ps');const s=i.selectionStart??i.value.length;i.value=i.value.slice(0,s)+b.dataset.c+i.value.slice(i.selectionEnd??s);i.focus();const n=s+b.dataset.c.length;i.setSelectionRange(n,n)};
+$('#p-fetch').onclick=async()=>{const w=$('#p-word').value.trim();if(!w)return toast('単語を入力してください',1);
+  try{const r=await (await jf('/g2p',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:w,lang:state.lang,use_replacements:false,use_pronunciations:false})})).json();$('#p-ps').value=r.phonemes;toast('現在の読みを取得しました')}catch(e){toast(e.message,1)}};
+async function playPhonemes(ps){try{const{blob}=await synth({phonemes:ps,lang:state.lang,voice:state.voice,speed:+$('#speed').value,format:'mp3'});new Audio(URL.createObjectURL(blob)).play()}catch(e){toast(e.message,1)}}
+$('#p-play').onclick=()=>{const ps=$('#p-ps').value.trim();if(!ps)return toast('音素列を入力してください',1);playPhonemes(ps)};
+$('#p-add').onclick=async()=>{const word=$('#p-word').value.trim(),phonemes=$('#p-ps').value.trim();if(!word||!phonemes)return toast('両方入力してください',1);
+  try{await jf('/pronunciations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({word,phonemes,lang:state.lang})});$('#p-word').value=$('#p-ps').value='';toast('登録しました');loadProns()}catch(e){toast(e.message,1)}};
+$('#p-list').onclick=async e=>{
+  const p=e.target.closest('[data-pp]');if(p)return playPhonemes(p.dataset.pp);
+  const ed=e.target.closest('[data-pe]');if(ed){$('#p-word').value=ed.dataset.pe;$('#p-ps').value=ed.dataset.ps;scrollTo({top:0,behavior:'smooth'});return}
+  const d=e.target.closest('[data-pd]');if(!d)return;
+  if(!d.classList.contains('arm')){d.classList.add('arm');d.textContent='本当に削除?';setTimeout(()=>{d.classList.remove('arm');d.textContent='削除'},3000);return}
+  try{await jf('/pronunciations?lang='+state.lang+'&word='+encodeURIComponent(d.dataset.pd),{method:'DELETE'});toast('削除しました');loadProns()}catch(er){toast(er.message,1)}};
+const pdrop=$('#p-drop');pdrop.onclick=()=>$('#p-file').click();
+['dragover','dragenter'].forEach(ev=>pdrop.addEventListener(ev,e=>{e.preventDefault();pdrop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>pdrop.addEventListener(ev,e=>{e.preventDefault();pdrop.classList.remove('over')}));
+pdrop.addEventListener('drop',e=>importProns(e.dataTransfer.files[0]));
+$('#p-file').onchange=e=>importProns(e.target.files[0]);
+async function importProns(f){if(!f)return;try{const r=await (await jf('/pronunciations/import?lang='+state.lang,{method:'POST',body:await f.text()})).json();toast(r.imported+' 件インポートしました');loadProns()}catch(e){toast(e.message,1)}}
+$('#p-ps').addEventListener('keydown',e=>{if(e.isComposing||e.keyCode===229)return;if(e.key==='Enter')$('#p-add').click()});
+$('#lang').addEventListener('change',()=>{if(!$('#t-pron').classList.contains('hide'))loadProns()});
 
 init();
 </script>
