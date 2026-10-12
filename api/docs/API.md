@@ -27,7 +27,7 @@
 
 ## POST /tts
 
-テキストを音声に変換し、`audio/wav`（24kHz / モノラル）をそのまま返します。
+テキストを音声に変換し、`audio/wav` または `audio/mpeg`（24kHz / モノラル）をそのまま返します。
 
 リクエスト (JSON)
 
@@ -37,12 +37,20 @@
 | lang | string | `j` | `j`=日本語, `a`=英語(米) |
 | voice | string | `jf_alpha` | `/voices` にあるボイス名 |
 | speed | number | `1.0` | 0.5〜2.0 |
+| format | string | `wav` | `wav` または `mp3` |
 
 ```bash
 curl -X POST http://localhost:8896/tts \
   -H 'Content-Type: application/json' \
   -d '{"text":"こんにちは。","lang":"j","voice":"jf_alpha","speed":1.0}' \
   -o out.wav
+```
+
+```bash
+# MP3 で受け取る
+curl -X POST http://localhost:8896/tts \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"こんにちは。","format":"mp3"}' -o out.mp3
 ```
 
 ```python
@@ -56,7 +64,7 @@ open("out.wav", "wb").write(r.content)
 
 | ステータス | 内容 |
 |---|---|
-| 400 | text が空、または未対応の lang |
+| 400 | text が空、未対応の lang、未対応の format |
 | 422 | パラメータの型/範囲エラー (speed 範囲外など) |
 | 500 | 音声が生成されなかった |
 

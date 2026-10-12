@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="kotoco API",
     version="0.1.0",
-    description="Kokoro-82M を使った日本語/英語のテキスト読み上げ API。結果は WAV (24kHz, mono) で返します。",
+    description="Kokoro-82M を使った日本語/英語のテキスト読み上げ API。結果は WAV または MP3 (24kHz, mono) で返します。",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -36,6 +36,7 @@ class TTSReq(BaseModel):
     lang: str = Field("j", description="言語コード。j=日本語, a=英語(米)")
     voice: str = Field("jf_alpha", description="ボイス名。GET /voices で一覧取得")
     speed: float = Field(1.0, ge=0.5, le=2.0, description="話速 (0.5〜2.0)")
+    format: str = Field("wav", description="出力形式。wav または mp3")
 
 
 @app.get("/health", summary="死活確認")
@@ -48,17 +49,20 @@ def voices():
     return VOICES
 
 
-@app.post("/tts", summary="テキストを音声(WAV)に変換", response_class=Response, responses={200: {"content": {"audio/wav": {}}}})
+@app.post("/tts", summary="テキストを音声(WAV)に変換", response_class=Response, responses={200: {"content": {"audio/wav": {}, "audio/mpeg": {}}}})
 def tts(req: TTSReq):
     if not req.text.strip():
         raise HTTPException(400, "text is empty")
     if req.lang not in VOICES:
         raise HTTPException(400, "unsupported lang")
+    if req.format not in ("wav", "mp3"):
+        raise HTTPException(400, "unsupported format")
     with _lock:
         pipe = get_pipeline(req.lang)
         chunks = [np.asarray(a) for _, _, a in pipe(req.text, voice=req.voice, speed=req.speed)]
     if not chunks:
         raise HTTPException(500, "no audio generated")
     buf = io.BytesIO()
-    sf.write(buf, np.concatenate(chunks), SAMPLE_RATE, format="WAV")
-    return Response(buf.getvalue(), media_type="audio/wav")
+    sf.write(buf, np.concatenate(chunks), SAMPLE_RATE, format=req.format.upper())
+    media = "audio/mpeg" if req.format == "mp3" else "audio/wav"
+    return Response(buf.getvalue(), media_type=media)

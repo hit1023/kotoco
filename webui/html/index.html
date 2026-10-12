@@ -15,6 +15,7 @@ button{font-size:1rem;padding:.5rem 1.2rem}
  <label>声 <select id="v"></select></label>
  <label>速度 <input id="s" type="range" min="0.6" max="1.5" step="0.1" value="1"> <span id="sv">1.0</span></label>
 </div>
+<div class="row"><label>形式 <select id="f"><option>wav</option><option>mp3</option></select></label> <a id="dl" download style="display:none">ダウンロード</a></div>
 <div class="row"><button id="go">読み上げ</button><span id="st"></span></div>
 <audio id="a" controls style="width:100%"></audio>
 <script>
@@ -26,9 +27,9 @@ $('s').oninput=()=>$('sv').textContent=(+$('s').value).toFixed(1);
 $('go').onclick=async()=>{
  $('go').disabled=true;$('st').textContent='生成中…(初回はモデルDLあり)';const t0=performance.now();
  try{const r=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({text:$('t').value,lang:$('l').value,voice:$('v').value,speed:+$('s').value})});
+  body:JSON.stringify({text:$('t').value,lang:$('l').value,voice:$('v').value,speed:+$('s').value,format:$('f').value})});
   if(!r.ok)throw new Error(await r.text());
-  const b=await r.blob();$('a').src=URL.createObjectURL(b);$('a').play();
+  const b=await r.blob();const u=URL.createObjectURL(b);$('a').src=u;$('dl').href=u;$('dl').download='kotoco.'+$('f').value;$('dl').style.display='';$('a').play();
   $('st').textContent=`完了 ${((performance.now()-t0)/1000).toFixed(1)}秒`;
  }catch(e){$('st').textContent='エラー: '+e.message}
  $('go').disabled=false};
