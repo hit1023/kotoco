@@ -2,6 +2,7 @@
 
 [Kokoro-82M](https://github.com/hexgrad/kokoro) を使った、軽量な日本語対応テキスト読み上げ (TTS) サービス。
 Docker で WebUI と API を分けて動かします。
+本番は https://kotoko.s-quad.com です（h-1）。
 
 ```
 kotoco/
